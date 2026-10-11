@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creator OS — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f1117; --panel: #1a1d27; --border: #2a2f3d;
+    --text: #e7eaf0; --muted: #8b93a7; --accent: #7c6cff;
+    --good: #2fbf71; --warn: #e6a23c; --bad: #e5484d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+  }
+  header .logo { font-weight: 700; font-size: 18px; }
+  header .logo span { color: var(--accent); }
+  header .tag { color: var(--muted); font-size: 13px; }
+  .wrap { padding: 24px; display: grid; gap: 20px; }
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px; overflow: hidden;
+  }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+  .profile { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 14px; }
+  .profile .label { color: var(--muted); }
+  .stat { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .stat.qualified { background: rgba(47,191,113,.15); color: var(--good); }
+  .stat.negotiating { background: rgba(230,162,60,.15); color: var(--warn); }
+  .stat.incoming { background: rgba(139,147,167,.15); color: var(--muted); }
+  .stat.handed_off { background: rgba(229,72,77,.15); color: var(--bad); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  .empty { color: var(--muted); padding: 16px 0; font-size: 13px; }
+  .msg { padding: 8px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 13px; max-width: 85%; }
+  .msg.brand { background: #262b3a; align-self: flex-start; }
+  .msg.creator { background: #332f5c; align-self: flex-end; margin-left: auto; }
+  .thread { display: flex; flex-direction: column; max-height: 300px; overflow-y: auto; }
+  .alert { display: flex; gap: 8px; align-items: flex-start; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+  .alert .bell { color: var(--accent); }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: rgba(124,108,255,.15); color: var(--accent); }
+  .row { display: flex; justify-content: space-between; align-items: center; }
+  .muted { color: var(--muted); }
+  button {
+    background: var(--accent); color: #fff; border: none; padding: 8px 14px;
+    border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+  button:hover { opacity: .9; }
+  input[type=text], input[type=number], textarea {
+    background: #10131b; border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 8px 10px; font-size: 13px; width: 100%;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: var(--good); color: #04120a; padding: 10px 16px; border-radius: 8px; font-weight: 600; font-size: 13px; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Creator <span>OS</span></div>
+  <div class="tag">Autonomous brand deal &amp; collab manager — Instagram DMs</div>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+    <!-- Creator profile -->
+    <div class="panel">
+      <h2>Creator Profile</h2>
+      <div class="profile" id="profile"></div>
+    </div>
+
+    <!-- Live leads -->
+    <div class="panel">
+      <h2>Live Leads <span id="leadCount" class="pill"></span></h2>
+      <div id="leads"><div class="empty">No leads yet.</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Simulator -->
+    <div class="panel">
+      <h2>DM Simulator (Brand → Creator)</h2>
+      <label>Brand IG user id</label>
+      <input type="text" id="simUser" value="ig_brand_glow" />
+      <label>Message</label>
+      <textarea id="simText" rows="3" placeholder='e.g. "Hi! We love your content and want to sponsor a post. Budget is $1200, timeline this month."'></textarea>
+      <div style="margin-top:10px"><button onclick="sendSim()">Send DM</button></div>
+    </div>
+
+    <!-- WhatsApp alerts -->
+    <div class="panel">
+      <h2>Handoff Alerts (Mock WhatsApp)</h2>
+      <div id="alerts"><div class="empty">No alerts yet.</div></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- Conversations -->
+    <div class="panel" style="grid-column: span 1">
+      <h2>Conversations</h2>
+      <div id="convs"></div>
+    </div>
+
+    <!-- Conversation log -->
+    <div class="panel">
+      <h2>Conversation Log <span class="muted" id="convTitle"></span></h2>
+      <div class="thread" id="thread"><div class="empty">Select a conversation to view.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let selectedConv = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+function el(html) {
+  const t = document.createElement('template');
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+
+async function refresh() {
+  const data = await api('/api/dashboard');
+  renderProfile(data.creator);
+  renderLeads(data.leads);
+  renderAlerts(data.alerts);
+  renderConversations(data.conversations);
+  if (selectedConv) loadThread(selectedConv);
+}
+
+function renderProfile(c) {
+  const box = document.getElementById('profile');
+  if (!c) { box.innerHTML = '<div class="empty">Run <code>python seed.py</code> to configure a creator.</div>'; return; }
+  box.innerHTML = `
+    <div><span class="label">Name</span><div>${c.name}</div></div>
+    <div><span class="label">Min rate</span><div>$${c.min_rate}</div></div>
+    <div><span class="label">Niche</span><div>${c.niche || '—'}</div></div>
+    <div><span class="label">Tone</span><div>${c.tone || '—'}</div></div>
+    <div><span class="label">Exclusions</span><div>${c.exclusions || '—'}</div></div>
+    <div><span class="label">Handoff</span><div>${c.phone || '—'}</div></div>`;
+}
+
+function renderLeads(leads) {
+  const box = document.getElementById('leads');
+  const count = document.getElementById('leadCount');
+  count.textContent = leads.length + (leads.length === 1 ? ' lead' : ' leads');
+  if (!leads.length) { box.innerHTML = '<div class="empty">No leads yet.</div>'; return; }
+  let html = '<table><thead><tr><th>Brand</th><th>Offer</th><th>Status</th><th>When</th></tr></thead><tbody>';
+  for (const l of leads) {
+    const when = (l.created_at || '').replace('T', ' ').slice(0, 16);
+    html += `<tr><td>${l.brand_name}</td><td>${l.offer}${l.amount ? `<br><b>$${l.amount}</b>` : ''}</td>
+      <td><span class="stat ${l.status}">${l.status}</span></td><td class="muted">${when}</td></tr>`;
+  }
+  box.innerHTML = html + '</tbody></table>';
+}
+
+function renderAlerts(alerts) {
+  const box = document.getElementById('alerts');
+  if (!alerts || !alerts.length) { box.innerHTML = '<div class="empty">No alerts yet. Qualify a deal to trigger a handoff.</div>'; return; }
+  box.innerHTML = alerts.map(a =>
+    `<div class="alert"><span class="bell">🚨</span><div>${a.body}<br><span class="muted">${(a.timestamp||'').replace('T',' ').slice(0,16)}</span></div></div>`
+  ).join('');
+}
+
+function renderConversations(convs) {
+  const box = document.getElementById('convs');
+  if (!convs.length) { box.innerHTML = '<div class="empty">No conversations yet.</div>'; return; }
+  box.innerHTML = convs.map(c => {
+    const sel = selectedConv === c.id;
+    const statusClass = ['qualified','negotiating','incoming','handed_off'].includes(c.status) ? c.status : 'incoming';
+    return `<div style="padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer;background:${sel?'#262b3a':'transparent'}"
+      onclick="selectConv('${c.id}')">
+      <div class="row"><b>${c.brand_name || c.ig_user_id}</b>
+        <span class="stat ${statusClass}">${c.status}</span></div>
+      <div class="muted" style="font-size:12px">${c.ig_user_id}${c.automation_on===0?' · paused':''}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selectConv(id) {
+  selectedConv = id;
+  loadThread(id);
+  refresh();
+}
+
+async function loadThread(id) {
+  const data = await api('/api/conversations/' + id + '/messages');
+  const thread = document.getElementById('thread');
+  const title = document.getElementById('convTitle');
+  const msgs = data.messages || [];
+  title.textContent = '· ' + id.slice(0, 8);
+  if (!msgs.length) { thread.innerHTML = '<div class="empty">Empty.</div>'; return; }
+  thread.innerHTML = msgs.map(m =>
+    `<div class="msg ${m.role}"><b>${m.role}</b><br>${escapeHtml(m.content)}</div>`
+  ).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+async function sendSim() {
+  const user = document.getElementById('simUser').value.trim() || 'ig_brand_001';
+  const text = document.getElementById('simText').value.trim();
+  if (!text) { showToast('Type a message first.'); return; }
+  const res = await api('/api/simulate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ig_user_id: user, text })
+  });
+  document.getElementById('simText').value = '';
+  if (res.reply) showToast('Replied: ' + res.reply.slice(0, 60) + '…');
+  else if (res.lead_id) showToast('Qualified! Lead + handoff fired 🎉');
+  else showToast(res.action);
+  refresh();
+}
+
+setInterval(refresh, 2500);
+refresh();
+</script>
+</body>
+</html>
